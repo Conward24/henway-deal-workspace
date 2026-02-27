@@ -3,6 +3,46 @@ import Replicate from "replicate";
 import pdfParse from "pdf-parse";
 import { withReplicateRetry } from "@/lib/replicateRetry";
 
+async function extractTextWithOcrSpace(pdfBuffer: Buffer): Promise<string> {
+  const apiKey = process.env.OCR_SPACE_API_KEY;
+  if (!apiKey) return "";
+
+  try {
+    const base64 = pdfBuffer.toString("base64");
+    const formData = new FormData();
+    formData.append("base64Image", `data:application/pdf;base64,${base64}`);
+    formData.append("filetype", "PDF");
+    formData.append("language", "eng");
+    formData.append("isTable", "true");
+    formData.append("scale", "true");
+
+    const res = await fetch("https://api.ocr.space/parse/image", {
+      method: "POST",
+      headers: {
+        apikey: apiKey,
+      },
+      body: formData,
+    });
+
+    if (!res.ok) {
+      return "";
+    }
+
+    const data = (await res.json()) as {
+      ParsedResults?: { ParsedText?: string }[];
+    };
+
+    if (Array.isArray(data.ParsedResults) && data.ParsedResults.length > 0) {
+      const text = data.ParsedResults.map((r) => r.ParsedText || "").join("\n");
+      return text.trim();
+    }
+
+    return "";
+  } catch {
+    return "";
+  }
+}
+
 export interface ExtractCimResponse {
   revenue?: number;
   reportedEbitda?: number;
@@ -35,6 +75,14 @@ export async function POST(request: NextRequest) {
       const buffer = Buffer.from(arrayBuffer);
       const parsed = await pdfParse(buffer);
       text = parsed.text?.trim() ?? "";
+
+      // Fallback to OCR for scanned PDFs (no text layer)
+      if (!text) {
+        const ocrText = await extractTextWithOcrSpace(buffer);
+        if (ocrText) {
+          text = ocrText;
+        }
+      }
     }
 
     // Optional fallback: allow an additional "text" field in the same form
