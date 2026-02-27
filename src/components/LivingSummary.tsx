@@ -26,10 +26,11 @@ export default function LivingSummary({ deal, onUpdateDeal, hasReplicateToken = 
   const [showLoiDraft, setShowLoiDraft] = useState(false);
   const [selectedMultipleIndex, setSelectedMultipleIndex] = useState(1); // 4x default
 
+  const effectiveEbitda = deal.bankEbitdaOverride ?? deal.adjustedEbitda;
   const multiple = deal.purchaseMultiples[selectedMultipleIndex] ?? 4;
-  const purchasePrice = deal.purchasePriceOverride ?? purchasePriceFromMultiple(deal.adjustedEbitda, multiple);
+  const purchasePrice = deal.purchasePriceOverride ?? purchasePriceFromMultiple(effectiveEbitda, multiple);
   const financing = computeFinancing({
-    adjustedEbitda: deal.adjustedEbitda,
+    adjustedEbitda: effectiveEbitda,
     purchasePrice,
     downPaymentPercent: deal.downPaymentPercent,
     sellerNotePercent: deal.sellerNotePercent,
@@ -107,8 +108,8 @@ export default function LivingSummary({ deal, onUpdateDeal, hasReplicateToken = 
         <h2 className="mb-3 text-sm font-medium text-zinc-400">Financial snapshot</h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div>
-            <p className="text-xs text-zinc-500">Adjusted EBITDA</p>
-            <p className="text-lg font-semibold text-white">{formatCurrency(deal.adjustedEbitda)}</p>
+            <p className="text-xs text-zinc-500">Adjusted EBITDA{deal.bankEbitdaOverride != null ? " (for financing)" : ""}</p>
+            <p className="text-lg font-semibold text-white">{formatCurrency(effectiveEbitda)}{deal.bankEbitdaOverride != null && <span className="ml-1 text-xs font-normal text-zinc-500"> (bank figure)</span>}</p>
           </div>
           <div>
             <p className="text-xs text-zinc-500">Purchase price range</p>
@@ -145,9 +146,12 @@ export default function LivingSummary({ deal, onUpdateDeal, hasReplicateToken = 
         <h2 className="mb-3 text-sm font-medium text-zinc-400">Major adjustment flags</h2>
         <div className="space-y-2 text-sm">
           <p>
-            Reported EBITDA: {formatCurrency(deal.reportedEbitda)} → Adjusted: {formatCurrency(deal.adjustedEbitda)}
+            Reported EBITDA: {formatCurrency(deal.reportedEbitda)} → Adjusted (CIM): {formatCurrency(deal.adjustedEbitda)}
             {deal.reportedEbitda !== 0 && <span className="ml-2 text-zinc-500">({deltaPercent >= 0 ? "+" : ""}{deltaPercent.toFixed(1)}%)</span>}
           </p>
+          {deal.bankEbitdaOverride != null && (
+            <p className="text-sm text-zinc-400">Using bank/cash flow EBITDA for pricing and DSCR: {formatCurrency(deal.bankEbitdaOverride)}</p>
+          )}
           {showEbitdaWarning && (
             <div className="rounded border border-amber-500/50 bg-amber-500/10 px-3 py-2 text-amber-200">
               Warning: Reported vs adjusted EBITDA differs by more than {DEFAULT_EBITDA_DELTA_WARNING_PERCENT}%. Review addbacks/deductions.

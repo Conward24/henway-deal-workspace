@@ -11,10 +11,11 @@ interface Props {
 }
 
 export default function LoiDraftView({ deal, selectedMultipleIndex = 1, onClose }: Props) {
+  const effectiveEbitda = deal.bankEbitdaOverride ?? deal.adjustedEbitda;
   const multiple = deal.purchaseMultiples[selectedMultipleIndex] ?? deal.purchaseMultiples[1] ?? 4;
-  const purchasePrice = deal.purchasePriceOverride ?? purchasePriceFromMultiple(deal.adjustedEbitda, multiple);
+  const purchasePrice = deal.purchasePriceOverride ?? purchasePriceFromMultiple(effectiveEbitda, multiple);
   const financing = computeFinancing({
-    adjustedEbitda: deal.adjustedEbitda,
+    adjustedEbitda: effectiveEbitda,
     purchasePrice,
     downPaymentPercent: deal.downPaymentPercent,
     sellerNotePercent: deal.sellerNotePercent,
@@ -43,7 +44,7 @@ export default function LoiDraftView({ deal, selectedMultipleIndex = 1, onClose 
           <hr className="border-border" />
           <p><strong className="text-white">Purchase price:</strong> {formatCurrency(purchasePrice)}</p>
           <p><strong className="text-white">Multiple on owner&apos;s cash flow (Adjusted EBITDA):</strong> {multiple}x</p>
-          <p><strong className="text-white">Owner&apos;s cash flow (Adjusted EBITDA):</strong> {formatCurrency(deal.adjustedEbitda)}</p>
+          <p><strong className="text-white">Owner&apos;s cash flow (Adjusted EBITDA):</strong> {formatCurrency(effectiveEbitda)}</p>
           <hr className="border-border" />
           <p><strong className="text-white">Equity (down payment):</strong> {formatCurrency(financing.equityAmount)} ({deal.downPaymentPercent}%)</p>
           {deal.sellerNotePercent > 0 && (

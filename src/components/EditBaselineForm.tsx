@@ -23,6 +23,8 @@ export default function EditBaselineForm({ deal, onSave, onCancel, onLogChange }
     const revenue = Number((form.querySelector('[name="revenue"]') as HTMLInputElement)?.value) || 0;
     const reportedEbitda = Number((form.querySelector('[name="reportedEbitda"]') as HTMLInputElement)?.value) ?? 0;
     const adjustedEbitda = Number((form.querySelector('[name="adjustedEbitda"]') as HTMLInputElement)?.value) ?? computed;
+    const bankVal = (form.querySelector('[name="bankEbitdaOverride"]') as HTMLInputElement)?.value?.trim();
+    const bankEbitdaOverride = bankVal === "" ? undefined : (() => { const n = Number(bankVal); return Number.isNaN(n) ? undefined : n; })();
     const reason = (form.querySelector('[name="reason"]') as HTMLInputElement)?.value?.trim();
 
     const now = new Date().toISOString();
@@ -35,6 +37,7 @@ export default function EditBaselineForm({ deal, onSave, onCancel, onLogChange }
       revenue,
       reportedEbitda,
       adjustedEbitda,
+      bankEbitdaOverride,
       lastUpdated: new Date().toISOString(),
     });
   }
@@ -70,10 +73,17 @@ export default function EditBaselineForm({ deal, onSave, onCancel, onLogChange }
       </div>
       <div>
         <label className="block text-sm text-zinc-400">
-          Adjusted EBITDA (override)
+          Adjusted EBITDA (from CIM / override)
           <input name="adjustedEbitda" type="number" step="1" defaultValue={deal.adjustedEbitda} placeholder={String(computed)} className="mt-1 w-full rounded border border-border bg-surface px-3 py-2 text-white" />
         </label>
         <p className="mt-1 text-xs text-zinc-500">Computed: Reported + addbacks + deductions = {computed.toLocaleString()}</p>
+      </div>
+      <div>
+        <label className="block text-sm text-zinc-400">
+          Adjusted EBITDA for financing (optional)
+          <input name="bankEbitdaOverride" type="number" step="1" defaultValue={deal.bankEbitdaOverride ?? ""} placeholder="e.g. bank / cash flow model number" className="mt-1 w-full rounded border border-border bg-surface px-3 py-2 text-white" />
+        </label>
+        <p className="mt-1 text-xs text-zinc-500">When set, this value is used for purchase price and DSCR instead of the CIM-adjusted figure.</p>
       </div>
       <div>
         <div className="flex items-center justify-between">

@@ -29,6 +29,7 @@ export interface Deal {
   revenue: number;
   reportedEbitda: number;
   adjustedEbitda: number; // calculated or override
+  bankEbitdaOverride?: number; // optional: use bank/cash flow model number for pricing & DSCR
   addbacks: AddbackOrDeduction[];
   deductions: AddbackOrDeduction[];
   // Financing
