@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Replicate from "replicate";
+import pdfParse from "pdf-parse";
 import { withReplicateRetry } from "@/lib/replicateRetry";
 
 export interface ExtractCimResponse {
@@ -20,16 +21,49 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  let body: { text?: string };
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  const contentType = request.headers.get("content-type") || "";
+
+  let text = "";
+
+  // Support PDF upload via multipart/form-data
+  if (contentType.includes("multipart/form-data")) {
+    const formData = await request.formData();
+    const file = formData.get("file");
+
+    if (file instanceof File) {
+      const arrayBuffer = await file.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      const parsed = await pdfParse(buffer);
+      text = parsed.text?.trim() ?? "";
+    }
+
+    // Optional fallback: allow an additional "text" field in the same form
+    if (!text) {
+      const rawText = formData.get("text");
+      if (typeof rawText === "string") {
+        text = rawText.trim();
+      }
+    }
+  } else if (contentType.includes("application/json")) {
+    let body: { text?: string };
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
+    text = typeof body.text === "string" ? body.text.trim() : "";
+  } else {
+    return NextResponse.json(
+      { error: "Unsupported content type. Use JSON or multipart/form-data." },
+      { status: 400 }
+    );
   }
 
-  const text = typeof body.text === "string" ? body.text.trim() : "";
   if (!text) {
-    return NextResponse.json({ error: "Missing or empty text" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Missing or empty text extracted from PDF or provided in body." },
+      { status: 400 }
+    );
   }
 
   const systemInstruction = `You are a financial analyst extracting key deal data from a CIM (Confidential Information Memorandum) or financial document excerpt.

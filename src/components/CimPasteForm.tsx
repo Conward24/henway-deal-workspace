@@ -11,19 +11,34 @@ interface Props {
 
 export default function CimPasteForm({ onApply, hasReplicateToken = false }: Props) {
   const [text, setText] = useState("");
+  const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleExtract() {
-    if (!text.trim()) return;
+    if (!file && !text.trim()) return;
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/extract-cim", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: text.trim() }),
-      });
+      let res: Response;
+
+      if (file) {
+        const formData = new FormData();
+        formData.append("file", file);
+        if (text.trim()) {
+          formData.append("text", text.trim());
+        }
+        res = await fetch("/api/extract-cim", {
+          method: "POST",
+          body: formData,
+        });
+      } else {
+        res = await fetch("/api/extract-cim", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: text.trim() }),
+        });
+      }
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || data.details || "Extraction failed");
       const result = data as ExtractCimResponse;
@@ -43,6 +58,7 @@ export default function CimPasteForm({ onApply, hasReplicateToken = false }: Pro
       } else if (result.reportedEbitda != null) updates.adjustedEbitda = result.reportedEbitda;
       onApply(updates);
       setText("");
+      setFile(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Extraction failed");
     } finally {
@@ -60,8 +76,27 @@ export default function CimPasteForm({ onApply, hasReplicateToken = false }: Pro
 
   return (
     <div className="rounded-lg border border-border bg-surface-raised p-4">
-      <h3 className="mb-2 text-sm font-medium text-white">Paste from CIM</h3>
-      <p className="mb-2 text-xs text-zinc-500">Paste a CIM or financial document excerpt; we&apos;ll extract revenue, EBITDA, and addbacks.</p>
+      <h3 className="mb-2 text-sm font-medium text-white">CIM import</h3>
+      <p className="mb-2 text-xs text-zinc-500">
+        Upload a CIM PDF or paste a financial excerpt; we&apos;ll extract revenue, EBITDA, and addbacks.
+      </p>
+      <div className="mb-2 flex flex-col gap-2 text-xs text-zinc-500">
+        <label className="inline-flex items-center gap-2">
+          <span className="shrink-0">PDF file:</span>
+          <input
+            type="file"
+            accept="application/pdf,.pdf"
+            onChange={(e) => {
+              const f = e.target.files?.[0] ?? null;
+              setFile(f);
+            }}
+            className="text-xs text-zinc-400 file:mr-2 file:rounded file:border-none file:bg-surface file:px-2 file:py-1 file:text-xs file:text-zinc-200"
+          />
+        </label>
+        <span className="text-[11px] text-zinc-600">
+          If you prefer, you can still paste text below instead of uploading a PDF.
+        </span>
+      </div>
       <textarea
         value={text}
         onChange={(e) => setText(e.target.value)}
@@ -74,7 +109,7 @@ export default function CimPasteForm({ onApply, hasReplicateToken = false }: Pro
         <button
           type="button"
           onClick={handleExtract}
-          disabled={loading || !text.trim()}
+          disabled={loading || (!text.trim() && !file)}
           className="rounded bg-brand px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
         >
           {loading ? "Extracting…" : "Extract & apply"}
