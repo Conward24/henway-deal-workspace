@@ -1,6 +1,8 @@
 import type { Deal, AddbackOrDeduction } from "@/types";
 import { DEFAULT_EBITDA_DELTA_WARNING_PERCENT } from "@/types";
 
+export { DEFAULT_EBITDA_DELTA_WARNING_PERCENT };
+
 export function formatCurrency(n: number): string {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
 }
